@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { History, LayoutGrid, List, ShoppingCart } from '@lucide/vue';
+import {
+    FolderOpen,
+    History,
+    LayoutGrid,
+    List,
+    ShoppingCart,
+} from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -17,6 +23,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as advertsIndex } from '@/routes/adverts';
 import { index as cartIndex } from '@/routes/adverts/cart';
+import { index as groupsIndex } from '@/routes/adverts/groups';
 import { index as servicesIndex } from '@/routes/adverts/services';
 import type { NavItem } from '@/types';
 
@@ -30,6 +37,11 @@ const mainNavItems: NavItem[] = [
         title: 'Объявления',
         href: advertsIndex(),
         icon: List,
+    },
+    {
+        title: 'Группы',
+        href: groupsIndex(),
+        icon: FolderOpen,
     },
     {
         title: 'Корзина',

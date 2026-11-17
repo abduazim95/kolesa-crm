@@ -12,12 +12,10 @@ class ServiceCatalog
     public const LABELS = [
         're' => 'Продление',
         'up' => 'Поднять',
-        'hot' => 'Срочно',
+        'hot' => 'Горячие',
         'vip' => 'VIP',
-        'color-yellow' => 'Выделение жёлтым',
-        'color-blue' => 'Выделение синим',
         'turbo-sale' => 'Турбо',
-        'fast-sale' => 'ТОП',
+        'fast-sale' => 'Fast',
         'archive-re' => 'Восстановить из архива',
     ];
 
@@ -74,9 +72,21 @@ class ServiceCatalog
         $raw = $advert->raw ?? [];
 
         // Packages live in `packages[]`.
+        // Prefer the discounted price (`discount.value`) when present —
+        // that's the amount that will actually be charged.
         if ($this->typeOf($serviceName) === 'package') {
             foreach ((array) data_get($raw, 'packages', []) as $pkg) {
-                if (($pkg['name'] ?? null) === $serviceName && isset($pkg['price'])) {
+                if (($pkg['name'] ?? null) !== $serviceName) {
+                    continue;
+                }
+
+                $discounted = data_get($pkg, 'discount.value');
+
+                if (is_numeric($discounted)) {
+                    return (int) $discounted;
+                }
+
+                if (isset($pkg['price']) && is_numeric($pkg['price'])) {
                     return (int) $pkg['price'];
                 }
             }
@@ -102,6 +112,42 @@ class ServiceCatalog
             self::ALLOWED_BY_STORAGE[$storageId] ?? [],
             true,
         );
+    }
+
+    /**
+     * Which storage_id does this service target?
+     * Returns null for unknown service names.
+     */
+    public function storageForService(string $serviceName): ?string
+    {
+        foreach (self::ALLOWED_BY_STORAGE as $storage => $services) {
+            if (in_array($serviceName, $services, true)) {
+                return $storage;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Flat list of (name, label, storage_id) for every known service/package.
+     *
+     * @return array<int, array{name: string, label: string, storage_id: string}>
+     */
+    public function allServices(): array
+    {
+        $out = [];
+        foreach (self::ALLOWED_BY_STORAGE as $storage => $services) {
+            foreach ($services as $name) {
+                $out[] = [
+                    'name' => $name,
+                    'label' => self::LABELS[$name] ?? $name,
+                    'storage_id' => $storage,
+                ];
+            }
+        }
+
+        return $out;
     }
 
     private function typeOf(string $serviceName): string

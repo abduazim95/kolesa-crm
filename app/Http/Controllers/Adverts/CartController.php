@@ -3,18 +3,12 @@
 namespace App\Http\Controllers\Adverts;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ApplyAdvertServiceJob;
-use App\Models\Advert;
 use App\Models\Cart;
-use App\Models\ServiceApplication;
-use App\Models\ServiceBatch;
 use App\Services\Kolesa\CartService;
+use App\Services\Kolesa\ServiceBatchLauncher;
 use App\Services\Kolesa\ServiceCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +17,7 @@ class CartController extends Controller
     public function __construct(
         private readonly CartService $cartService,
         private readonly ServiceCatalog $catalog,
+        private readonly ServiceBatchLauncher $launcher,
     ) {
     }
 
@@ -132,24 +127,16 @@ class CartController extends Controller
         $this->cartService->prune($cart);
         $cart->load('items.advert');
 
-        $plan = $cart->items
-            ->map(function ($item) use ($serviceName) {
-                $price = $item->advert
-                    ? $this->catalog->priceFor($item->advert, $serviceName)
-                    : null;
+        $adverts = $cart->items->map->advert->filter()->values();
 
-                return $item->advert && $price !== null
-                    ? [
-                        'advert_id' => $item->advert_id,
-                        'kolesa_id' => $item->advert->kolesa_id,
-                        'price' => $price,
-                    ]
-                    : null;
-            })
-            ->filter()
-            ->values();
+        $batch = $this->launcher->launch(
+            $adverts,
+            $cart->storage_id,
+            $serviceName,
+            $request->user()->id,
+        );
 
-        if ($plan->isEmpty()) {
+        if ($batch === null) {
             Inertia::flash('toast', [
                 'type' => 'error',
                 'message' => __('Нет объявлений с ценой на выбранную услугу.'),
@@ -158,73 +145,16 @@ class CartController extends Controller
             return back();
         }
 
-        $total = (int) $plan->sum('price');
-        $batchId = (string) Str::uuid();
-        $applicationIds = [];
-
-        DB::transaction(function () use (
-            $batchId,
-            $cart,
-            $serviceName,
-            $plan,
-            $total,
-            $request,
-            &$applicationIds,
-        ) {
-            ServiceBatch::create([
-                'id' => $batchId,
-                'user_id' => $request->user()->id,
-                'storage_id' => $cart->storage_id,
-                'service_name' => $serviceName,
-                'total_count' => $plan->count(),
-                'estimated_total' => $total,
-            ]);
-
-            foreach ($plan as $entry) {
-                $application = ServiceApplication::create([
-                    'batch_id' => $batchId,
-                    'advert_id' => $entry['advert_id'],
-                    'kolesa_id' => $entry['kolesa_id'],
-                    'service_name' => $serviceName,
-                    'storage_id' => $cart->storage_id,
-                    'estimated_price' => $entry['price'],
-                    'status' => ServiceApplication::STATUS_PENDING,
-                ]);
-
-                $applicationIds[] = $application->id;
-            }
-        });
-
-        $jobs = array_map(
-            fn (int $id) => new ApplyAdvertServiceJob($id),
-            $applicationIds,
-        );
-
-        $laravelBatch = Bus::batch($jobs)
-            ->name("apply-{$serviceName}-".now()->format('YmdHis'))
-            ->onQueue(config('kolesa.queue_packages'))
-            ->allowFailures()
-            ->dispatch();
-
-        DB::transaction(function () use ($batchId, $laravelBatch) {
-            ServiceApplication::query()
-                ->where('batch_id', $batchId)
-                ->update(['batch_id' => $laravelBatch->id]);
-            ServiceBatch::query()
-                ->whereKey($batchId)
-                ->update(['id' => $laravelBatch->id]);
-        });
-
         $this->cartService->clear($cart);
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Применение запущено для :count объявлений.', [
-                'count' => $plan->count(),
+                'count' => $batch->totalJobs,
             ]),
         ]);
 
-        return to_route('adverts.services.show', ['batch' => $laravelBatch->id]);
+        return to_route('adverts.services.show', ['batch' => $batch->id]);
     }
 
     private function shapeCart(Cart $cart): array

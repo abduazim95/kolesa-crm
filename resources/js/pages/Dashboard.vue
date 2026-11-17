@@ -42,7 +42,7 @@ defineOptions({
                 </h1>
                 <p class="max-w-prose text-sm text-neutral-400">
                     Синхронизация каталога и массовое подключение пакетов
-                    «Турбо» и «ТОП».
+                    «Турбо» и «Fast».
                 </p>
             </div>
             <div class="mt-5 flex flex-wrap gap-2">

@@ -10,7 +10,24 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { index as advertsIndex } from '@/routes/adverts';
 import { index as cartRoute } from '@/routes/adverts/cart';
@@ -59,18 +76,16 @@ type SortKey =
 const serviceLabels: Record<string, string> = {
     re: 'Продление',
     up: 'Поднятие',
-    hot: 'Срочно',
+    hot: 'Горячие',
     vip: 'VIP',
-    'color-yellow': 'Жёлтый',
-    'color-blue': 'Синий',
     'turbo-sale': 'Турбо',
-    'fast-sale': 'ТОП',
+    'fast-sale': 'Fast',
     'archive-re': 'Восстановление',
 };
 
 const serviceFilterOptions: ReadonlyArray<{ value: string; label: string }> = [
     { value: 'turbo-sale', label: 'Турбо' },
-    { value: 'fast-sale', label: 'ТОП' },
+    { value: 'fast-sale', label: 'Fast' },
     { value: 'vip', label: 'VIP' },
     { value: 'up', label: 'Поднятие' },
 ];
@@ -95,6 +110,7 @@ const props = defineProps<{
     };
     syncRun: SyncRun | null;
     hasToken: boolean;
+    groups: Array<{ id: number; name: string }>;
 }>();
 
 defineOptions({
@@ -367,6 +383,35 @@ function addToCart() {
         },
     );
 }
+
+function addToGroup(groupId: number) {
+    router.post(
+        `/adverts/groups/${groupId}/items`,
+        { advert_ids: Array.from(selectedIds.value) },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => clearSelection(),
+        },
+    );
+}
+
+const newGroupOpen = ref(false);
+const newGroupForm = ref({ name: '' });
+
+function openNewGroup() {
+    newGroupForm.value.name = '';
+    newGroupOpen.value = true;
+}
+
+function submitNewGroup() {
+    if (!newGroupForm.value.name.trim()) return;
+    router.post(
+        '/adverts/groups',
+        { name: newGroupForm.value.name },
+        { onSuccess: () => (newGroupOpen.value = false) },
+    );
+}
 </script>
 
 <template>
@@ -607,6 +652,32 @@ function addToCart() {
                 >
                     В корзину
                 </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                        <Button size="sm" variant="outline">В группу</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Выбрать группу</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            v-for="g in groups"
+                            :key="g.id"
+                            @click="addToGroup(g.id)"
+                        >
+                            {{ g.name }}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            v-if="groups.length === 0"
+                            disabled
+                        >
+                            Групп ещё нет
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem @click="openNewGroup">
+                            + Новая группа
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                     size="sm"
                     variant="ghost"
@@ -789,6 +860,39 @@ function addToCart() {
                 </tbody>
             </table>
         </div>
+
+        <Dialog v-model:open="newGroupOpen">
+            <DialogContent class="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Новая группа</DialogTitle>
+                </DialogHeader>
+                <div class="space-y-2">
+                    <Label for="new-group-name">Название</Label>
+                    <Input
+                        id="new-group-name"
+                        v-model="newGroupForm.name"
+                        required
+                        autofocus
+                    />
+                    <p class="text-xs text-muted-foreground">
+                        В группе можно держать и активные, и архивные
+                        объявления. Услуги применяются только к подходящему
+                        статусу.
+                    </p>
+                </div>
+                <DialogFooter>
+                    <DialogClose as-child>
+                        <Button variant="secondary">Отмена</Button>
+                    </DialogClose>
+                    <Button
+                        :disabled="!newGroupForm.name.trim()"
+                        @click="submitNewGroup"
+                    >
+                        Создать
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <div
             v-if="adverts.links.length > 3"

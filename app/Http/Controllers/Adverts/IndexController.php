@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Adverts;
 
 use App\Http\Controllers\Controller;
 use App\Models\Advert;
+use App\Models\Group;
 use App\Models\KolesaSetting;
 use App\Models\KolesaSyncRun;
 use Illuminate\Http\Request;
@@ -107,6 +108,10 @@ class IndexController extends Controller
                 'finished_at' => $run->finished_at?->toIso8601String(),
             ] : null,
             'hasToken' => KolesaSetting::current()->hasToken(),
+            'groups' => Group::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->values(),
         ]);
     }
 }

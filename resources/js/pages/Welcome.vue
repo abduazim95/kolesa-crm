@@ -44,7 +44,7 @@ import { dashboard, login } from '@/routes';
                 </h1>
                 <p class="max-w-prose text-sm leading-relaxed text-neutral-400">
                     Синхронизация каталога, массовое подключение пакетов
-                    «Турбо» и «ТОП» с&nbsp;предварительным расчётом бюджета.
+                    «Турбо» и «Fast» с&nbsp;предварительным расчётом бюджета.
                 </p>
             </div>
 

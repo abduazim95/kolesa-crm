@@ -22,7 +22,6 @@ return new class extends Migration
             $table->timestamp('applied_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('batch_id')->references('id')->on('service_batches')->cascadeOnDelete();
             $table->index('batch_id');
             $table->index(['advert_id', 'status']);
         });

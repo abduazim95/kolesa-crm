@@ -90,6 +90,17 @@ class KolesaClient
             throw new KolesaAuthExpiredException('Token not configured');
         }
 
+        $query = array_merge(
+            array_filter(
+                [
+                    'appId' => config('kolesa.query_defaults.appId'),
+                    'appKey' => config('kolesa.query_defaults.appKey'),
+                ],
+                fn ($v) => $v !== null && $v !== '',
+            ),
+            $query,
+        );
+
         $headers = array_filter(
             array_merge(
                 (array) config('kolesa.headers'),
