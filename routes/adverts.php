@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Adverts\CartController;
+use App\Http\Controllers\Adverts\ExportController;
 use App\Http\Controllers\Adverts\GroupController;
 use App\Http\Controllers\Adverts\GroupScheduleController;
 use App\Http\Controllers\Adverts\IndexController;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('adverts', IndexController::class)->name('adverts.index');
+    Route::get('adverts/export', ExportController::class)->name('adverts.export');
     Route::post('adverts/sync', [SyncController::class, 'store'])->name('adverts.sync.store');
 
     Route::get('adverts/cart', [CartController::class, 'index'])->name('adverts.cart.index');

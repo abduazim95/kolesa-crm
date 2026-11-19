@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { refDebounced, useIntervalFn } from '@vueuse/core';
-import { ArrowDown, ArrowUp, Loader2, Search, X } from '@lucide/vue';
+import {
+    ArrowDown,
+    ArrowUp,
+    Download,
+    Loader2,
+    Search,
+    X,
+} from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import CartController from '@/actions/App/Http/Controllers/Adverts/CartController';
 import SyncController from '@/actions/App/Http/Controllers/Adverts/SyncController';
@@ -311,6 +318,18 @@ const statusLabels: Record<string, string> = {
     temp: 'Черновик',
 };
 
+const exportUrl = computed(() => {
+    const params = new URLSearchParams();
+    const q = buildQuery();
+    for (const [key, value] of Object.entries(q)) {
+        if (value !== null && value !== undefined && value !== '') {
+            params.set(key, String(value));
+        }
+    }
+    const qs = params.toString();
+    return '/adverts/export' + (qs ? '?' + qs : '');
+});
+
 function startSync() {
     router.post(
         SyncController.store.url(),
@@ -425,6 +444,12 @@ function submitNewGroup() {
             />
 
             <div class="flex gap-2">
+                <Button as-child variant="outline">
+                    <a :href="exportUrl" download>
+                        <Download class="size-4" />
+                        Excel
+                    </a>
+                </Button>
                 <Button as-child variant="outline">
                     <Link :href="cartRoute()">Корзина</Link>
                 </Button>
